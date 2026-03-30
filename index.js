@@ -4,7 +4,7 @@ const cors = require('cors');
 const { pool, initDB } = require('./db');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3306;
 
 // Middlewares
 app.use(cors()); // Permite que React (localhost:5173) se conecte sin errores
@@ -140,6 +140,22 @@ app.put('/api/profile', async (req, res) => {
     );
     res.json({ message: 'Perfil actualizado' });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==========================================
+// RUTAS PARA NEWSLETTER (SUSCRIPCIONES)
+// ==========================================
+app.post('/api/subscribe', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'El email es requerido' });
+  try {
+    await pool.query('INSERT INTO subscribers (email) VALUES (?)', [email]);
+    res.status(201).json({ success: true, message: 'Suscripción exitosa' });
+  } catch (error) {
+    // Evitar error si el correo ya existe
+    if (error.code === 'ER_DUP_ENTRY') return res.status(200).json({ message: 'El usuario ya estaba suscrito.' });
     res.status(500).json({ error: error.message });
   }
 });
