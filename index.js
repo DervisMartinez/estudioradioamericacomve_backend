@@ -8,7 +8,8 @@ const port = process.env.PORT || 3000;
 
 // Middlewares
 app.use(cors()); // Permite que React (localhost:5173) se conecte sin errores
-app.use(express.json()); // Permite recibir datos en formato JSON
+app.use(express.json({ limit: '50mb' })); // Aumentamos el límite a 50mb para soportar imágenes
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Inicializar las tablas de la BD (viene de tu db.js)
 initDB();
@@ -90,6 +91,19 @@ app.post('/api/programs', async (req, res) => {
       [id, name, category, thumbnail, type, description, schedule, host, coverImage]
     );
     res.status(201).json({ message: 'Programa creado' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/programs/:id', async (req, res) => {
+  const { name, category, thumbnail, type, description, schedule, host, coverImage } = req.body;
+  try {
+    await pool.query(
+      `UPDATE programs SET name=?, category=?, thumbnail=?, type=?, description=?, schedule=?, host=?, coverImage=? WHERE id=?`,
+      [name, category, thumbnail, type, description, schedule, host, coverImage, req.params.id]
+    );
+    res.json({ message: 'Programa actualizado' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
