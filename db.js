@@ -2,9 +2,10 @@ const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
-  user: process.env.DB_USER,
+  port: process.env.DB_PORT || 3306,
+  user: process.env.DB_USERNAME || process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  database: process.env.DB_DATABASE || process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
@@ -15,10 +16,12 @@ const initDB = async () => {
     // 0. Crear la base de datos automáticamente si no existe
     const tempConnection = await mysql.createConnection({
       host: process.env.DB_HOST,
-      user: process.env.DB_USER,
+      port: process.env.DB_PORT || 3306,
+      user: process.env.DB_USERNAME || process.env.DB_USER,
       password: process.env.DB_PASSWORD,
     });
-    await tempConnection.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME}\`;`);
+    const dbName = process.env.DB_DATABASE || process.env.DB_NAME;
+    await tempConnection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
     await tempConnection.end();
 
     console.log('✅ Conexión exitosa a MySQL (phpMyAdmin)');
