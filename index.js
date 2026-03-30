@@ -115,10 +115,13 @@ app.post('/api/programs', async (req, res) => {
   try {
     await db.query(
       'INSERT INTO programs (id, name, category, thumbnail, type, description, schedule, host, coverImage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, name, category, thumbnail, type, description, schedule, host, coverImage]
+      [id, name, category, thumbnail || '', type || 'Programa', description || '', schedule || '', host || '', coverImage || '']
     );
     res.status(201).json({ success: true, id });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { 
+    console.error("Error guardando programa:", error);
+    res.status(500).json({ error: error.message }); 
+  }
 });
 
 app.put('/api/programs/:id', async (req, res) => {
@@ -126,17 +129,23 @@ app.put('/api/programs/:id', async (req, res) => {
   try {
     await db.query(
       'UPDATE programs SET name=?, category=?, thumbnail=?, type=?, description=?, schedule=?, host=?, coverImage=? WHERE id=?',
-      [name, category, thumbnail, type, description, schedule, host, coverImage, req.params.id]
+      [name, category, thumbnail || '', type || 'Programa', description || '', schedule || '', host || '', coverImage || '', req.params.id]
     );
     res.json({ success: true });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { 
+    console.error("Error actualizando programa:", error);
+    res.status(500).json({ error: error.message }); 
+  }
 });
 
 app.delete('/api/programs/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM programs WHERE id=?', [req.params.id]);
     res.json({ success: true });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { 
+    console.error("Error eliminando programa:", error);
+    res.status(500).json({ error: error.message }); 
+  }
 });
 
 // --- ENDPOINTS DE VIDEOS / AUDIOS ---
@@ -151,7 +160,10 @@ app.get('/api/videos', async (req, res) => {
       isAudio: !!v.isAudio
     }));
     res.json(formatted);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { 
+    console.error("Error obteniendo videos:", error);
+    res.status(500).json({ error: error.message }); 
+  }
 });
 
 app.post('/api/videos', async (req, res) => {
@@ -159,10 +171,13 @@ app.post('/api/videos', async (req, res) => {
   try {
     await db.query(
       'INSERT INTO videos (id, title, category, thumbnail, description, isFeatured, isShort, isAudio, url, duration, views, createdAt, programId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, title, category, thumbnail, description, isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, url, duration, views || 0, createdAt, programId || null]
+      [id, title, category, thumbnail || '', description || '', isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, url || '', duration || '', views || 0, createdAt, programId || null]
     );
     res.status(201).json({ success: true });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { 
+    console.error("Error guardando video:", error);
+    res.status(500).json({ error: error.message }); 
+  }
 });
 
 app.put('/api/videos/:id', async (req, res) => {
@@ -170,17 +185,23 @@ app.put('/api/videos/:id', async (req, res) => {
   try {
     await db.query(
       'UPDATE videos SET title=?, category=?, thumbnail=?, description=?, isFeatured=?, isShort=?, isAudio=?, url=?, programId=? WHERE id=?',
-      [title, category, thumbnail, description, isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, url, programId || null, req.params.id]
+      [title, category, thumbnail || '', description || '', isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, url || '', programId || null, req.params.id]
     );
     res.json({ success: true });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { 
+    console.error("Error actualizando video:", error);
+    res.status(500).json({ error: error.message }); 
+  }
 });
 
 app.delete('/api/videos/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM videos WHERE id=?', [req.params.id]);
     res.json({ success: true });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { 
+    console.error("Error eliminando video:", error);
+    res.status(500).json({ error: error.message }); 
+  }
 });
 
 // --- ENDPOINTS DE PERFIL ---
@@ -188,7 +209,10 @@ app.get('/api/profile', async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM user_profile WHERE id = 1');
     res.json(rows[0] || {});
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { 
+    console.error("Error obteniendo perfil:", error);
+    res.status(500).json({ error: error.message }); 
+  }
 });
 
 app.put('/api/profile', async (req, res) => {
@@ -196,10 +220,13 @@ app.put('/api/profile', async (req, res) => {
   try {
     await db.query(
       'UPDATE user_profile SET firstName=?, lastName=?, avatar=?, bio=?, twitter=?, instagram=? WHERE id=1',
-      [firstName, lastName, avatar, bio, twitter, instagram]
+      [firstName, lastName, avatar || '', bio || '', twitter || '', instagram || '']
     );
     res.json({ success: true });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { 
+    console.error("Error actualizando perfil:", error);
+    res.status(500).json({ error: error.message }); 
+  }
 });
 
 // Iniciar el servidor
