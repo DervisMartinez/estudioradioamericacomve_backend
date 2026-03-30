@@ -84,6 +84,15 @@ async function initDB() {
       `);
     }
 
+    // 4. Crear Tabla de Suscriptores para el Newsletter
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS subscribers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        subscribedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('📦 Tablas de base de datos sincronizadas y listas');
   } catch (err) {
     console.error('❌ Error fatal con la base de datos:', err.message);
@@ -226,6 +235,53 @@ app.put('/api/profile', async (req, res) => {
   } catch (error) { 
     console.error("Error actualizando perfil:", error);
     res.status(500).json({ error: error.message }); 
+  }
+});
+
+// --- ENDPOINT DE BÚSQUEDA ---
+app.get('/api/search', async (req, res) => {
+  const { query } = req.query;
+  if (!query) {
+    return res.status(400).json({ error: 'El término de búsqueda es requerido' });
+  }
+  try {
+    const searchTerm = `%${query}%`;
+    const [videos] = await db.query('SELECT id, title, thumbnail, "video" as type FROM videos WHERE title LIKE ?', [searchTerm]);
+    const [programs] = await db.query('SELECT id, name as title, thumbnail, "program" as type FROM programs WHERE name LIKE ?', [searchTerm]);
+    res.json({ videos, programs });
+  } catch (error) {
+    console.error("Error en la búsqueda:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- ENDPOINT PARA INCREMENTAR VISTAS ---
+app.post('/api/videos/:id/view', async (req, res) => {
+  try {
+    await db.query('UPDATE videos SET views = views + 1 WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error incrementando vistas:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- ENDPOINT PARA NEWSLETTER ---
+app.post('/api/subscribe', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'El email es requerido' });
+  }
+  try {
+    await db.query('INSERT INTO subscribers (email) VALUES (?)', [email]);
+    res.status(201).json({ success: true });
+  } catch (error) {
+    // Ignoramos el error de entrada duplicada para no exponer información
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(200).json({ message: 'El usuario ya estaba suscrito.' });
+    }
+    console.error("Error en la suscripción:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 
