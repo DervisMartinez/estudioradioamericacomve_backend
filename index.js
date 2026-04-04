@@ -67,12 +67,12 @@ app.get('/api/videos', async (req, res) => {
 });
 
 app.post('/api/videos', async (req, res) => {
-  const { id, title, category, thumbnail, description, isFeatured, isShort, isAudio, url, duration, views, createdAt, programId } = req.body;
+  const { id, title, category, thumbnail, description, isFeatured, isShort, isAudio, url, duration, views, createdAt, programId, releaseDate, pressNoteUrl } = req.body;
   try {
     await pool.query(
-      `INSERT INTO videos (id, title, category, thumbnail, description, isFeatured, isShort, isAudio, url, duration, views, createdAt, programId) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, title, category, thumbnail, description, isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, url, duration, views || 0, createdAt, programId || null]
+      `INSERT INTO videos (id, title, category, thumbnail, description, isFeatured, isShort, isAudio, url, duration, views, createdAt, programId, releaseDate, pressNoteUrl) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, title, category, thumbnail, description, isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, url, duration, views || 0, createdAt, programId || null, releaseDate || null, pressNoteUrl || null]
     );
     res.status(201).json({ message: 'Video creado con éxito' });
   } catch (error) {
@@ -82,11 +82,11 @@ app.post('/api/videos', async (req, res) => {
 });
 
 app.put('/api/videos/:id', async (req, res) => {
-  const { title, category, thumbnail, description, isFeatured, isShort, isAudio, url, duration, programId } = req.body;
+  const { title, category, thumbnail, description, isFeatured, isShort, isAudio, url, duration, programId, releaseDate, pressNoteUrl } = req.body;
   try {
     await pool.query(
-      `UPDATE videos SET title=?, category=?, thumbnail=?, description=?, isFeatured=?, isShort=?, isAudio=?, url=?, duration=?, programId=? WHERE id=?`,
-      [title, category, thumbnail, description, isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, url, duration, programId || null, req.params.id]
+      `UPDATE videos SET title=?, category=?, thumbnail=?, description=?, isFeatured=?, isShort=?, isAudio=?, url=?, duration=?, programId=?, releaseDate=?, pressNoteUrl=? WHERE id=?`,
+      [title, category, thumbnail, description, isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, url, duration, programId || null, releaseDate || null, pressNoteUrl || null, req.params.id]
     );
     res.json({ message: 'Video actualizado' });
   } catch (error) {
@@ -123,7 +123,7 @@ app.get('/api/programs', async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM programs');
     res.json(rows);
   } catch (error) {
-    console.error("❌ Error GET programs:", error.message);
+    console.error(" Error GET programs:", error.message);
     res.status(400).json({ error: error.message });
   }
 });
@@ -137,7 +137,7 @@ app.post('/api/programs', async (req, res) => {
     );
     res.status(201).json({ message: 'Programa creado' });
   } catch (error) {
-    console.error("❌ Error POST programs:", error.message);
+    console.error(" Error POST programs:", error.message);
     res.status(400).json({ error: error.message });
   }
 });
@@ -151,7 +151,7 @@ app.put('/api/programs/:id', async (req, res) => {
     );
     res.json({ message: 'Programa actualizado' });
   } catch (error) {
-    console.error("❌ Error PUT programs:", error.message);
+    console.error(" Error PUT programs:", error.message);
     res.status(400).json({ error: error.message });
   }
 });
@@ -161,7 +161,7 @@ app.delete('/api/programs/:id', async (req, res) => {
     await pool.query('DELETE FROM programs WHERE id=?', [req.params.id]);
     res.json({ message: 'Programa eliminado' });
   } catch (error) {
-    console.error("❌ Error DELETE programs:", error.message);
+    console.error(" Error DELETE programs:", error.message);
     res.status(400).json({ error: error.message });
   }
 });
@@ -212,5 +212,5 @@ app.post('/api/subscribe', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Servidor backend corriendo en http://localhost:${port}`);
+  console.log(` Servidor backend corriendo en http://localhost:${port}`);
 });
