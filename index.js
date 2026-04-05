@@ -181,11 +181,11 @@ app.get('/api/profile', async (req, res) => {
 });
 
 app.put('/api/profile', async (req, res) => {
-  const { firstName, lastName, avatar, bio, twitter, instagram } = req.body;
+  const { firstName, lastName, avatar, bio, twitter, instagram, youtube, facebook } = req.body;
   try {
     await pool.query(
-      `UPDATE user_profile SET firstName=?, lastName=?, avatar=?, bio=?, twitter=?, instagram=? WHERE id=1`,
-      [firstName, lastName, avatar, bio, twitter, instagram]
+      `UPDATE user_profile SET firstName=?, lastName=?, avatar=?, bio=?, twitter=?, instagram=?, youtube=?, facebook=? WHERE id=1`,
+      [firstName, lastName, avatar, bio, twitter, instagram, youtube, facebook]
     );
     res.json({ message: 'Perfil actualizado' });
   } catch (error) {

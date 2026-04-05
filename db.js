@@ -74,7 +74,9 @@ const initDB = async () => {
         avatar LONGTEXT,
         bio TEXT,
         twitter VARCHAR(100),
-        instagram VARCHAR(100)
+        instagram VARCHAR(100),
+        youtube VARCHAR(255),
+        facebook VARCHAR(255)
       )
     `);
 
@@ -86,6 +88,9 @@ const initDB = async () => {
         VALUES (1, 'Admin', 'Radio', '', 'Administrador del sistema', '@radio', '@radio')
       `);
     }
+
+    try { await pool.query('ALTER TABLE user_profile ADD COLUMN youtube VARCHAR(255) NULL'); } catch(e) {}
+    try { await pool.query('ALTER TABLE user_profile ADD COLUMN facebook VARCHAR(255) NULL'); } catch(e) {}
 
     // 4. Crear Tabla de Suscriptores para el Newsletter
     await pool.query(`
