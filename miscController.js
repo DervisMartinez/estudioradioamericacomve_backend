@@ -1,4 +1,5 @@
 const { pool } = require('../config/db');
+const { sendWelcomeNewsletter } = require('./utils/services/mailer');
 
 exports.getProfile = async (req, res) => {
   try {
@@ -43,6 +44,14 @@ exports.subscribe = async (req, res) => {
   if (!email) return res.status(400).json({ error: 'El email es requerido' });
   try {
     await pool.query('INSERT INTO subscribers (email) VALUES (?)', [email]);
+
+    // Extraer el contenido destacado para armar el correo
+    const [featuredVideos] = await pool.query('SELECT * FROM videos WHERE isFeatured = 1 LIMIT 2');
+    const [newPrograms] = await pool.query('SELECT * FROM programs LIMIT 3');
+
+    // Enviar el correo usando Nodemailer
+    await sendWelcomeNewsletter(email, featuredVideos, newPrograms);
+
     res.status(201).json({ success: true });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') return res.status(200).json({ message: 'El usuario ya estaba suscrito.' });

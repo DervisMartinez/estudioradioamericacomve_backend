@@ -5,6 +5,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const { pool, initDB } = require('./db');
+const { sendWelcomeNewsletter } = require('./utils/services/mailer');
 
 const app = express();
 const port = process.env.PORT || 3005;
@@ -202,6 +203,14 @@ app.post('/api/subscribe', async (req, res) => {
   if (!email) return res.status(400).json({ error: 'El email es requerido' });
   try {
     await pool.query('INSERT INTO subscribers (email) VALUES (?)', [email]);
+    
+    // Extraer el contenido destacado para armar el correo
+    const [featuredVideos] = await pool.query('SELECT * FROM videos WHERE isFeatured = 1 LIMIT 2');
+    const [newPrograms] = await pool.query('SELECT * FROM programs LIMIT 3');
+
+    // Enviar el correo usando Nodemailer
+    await sendWelcomeNewsletter(email, featuredVideos, newPrograms);
+
     res.status(201).json({ success: true, message: 'Suscripción exitosa' });
   } catch (error) {
     // Evitar error si el correo ya existe
