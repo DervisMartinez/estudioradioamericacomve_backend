@@ -75,7 +75,7 @@ const sendWelcomeNewsletter = async (email, featuredVideos, newPrograms) => {
 
   // Ejecutar el envío
   await transporter.sendMail({
-    from: '"Estudio Radio América" <tu-correo@radioamerica.com.ve>',
+    from: `"Estudio Radio América" <${process.env.SMTP_USER}>`,
     to: email,
     subject: '¡Lo nuevo en Estudio Radio América! 📻',
     html: htmlTemplate
