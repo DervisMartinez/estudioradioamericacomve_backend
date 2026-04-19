@@ -16,3 +16,6 @@ npm-debug.log*
 # Build output
 dist/
 build/
+
+
+config/firebase-service-account.json
