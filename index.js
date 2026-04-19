@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { pool, initDB } = require('./db');
 const { sendWelcomeNewsletter } = require('./utils/services/mailer');
+const { processVideoToHLS } = require('./utils/hlsProcessor');
 
 const app = express();
 const port = process.env.PORT || 3005;
@@ -46,7 +47,16 @@ app.post('/api/upload', (req, res) => {
     upload.single('file')(req, res, (err) => {
       if (err) return res.status(400).json({ error: `Error de Multer: ${err.message}` });
       if (!req.file) return res.status(400).json({ error: 'No se subió archivo' });
-      res.json({ url: `/uploads/${req.file.filename}` });
+
+      const fileName = req.file.filename;
+      // Si es un video mp4, lo picamos y encriptamos con HLS
+      if (req.file.mimetype.startsWith('video/') && fileName.endsWith('.mp4')) {
+        const hlsFolderId = fileName.split('.')[0]; // Usamos el timestamp como nombre de carpeta
+        const hlsUrl = processVideoToHLS(req.file.path, uploadsDir, hlsFolderId);
+        return res.json({ url: hlsUrl });
+      }
+
+      res.json({ url: `/uploads/${fileName}` });
     });
   } catch (error) {
     console.error("❌ Error en el try-catch de subida:", error);
@@ -216,6 +226,33 @@ app.post('/api/subscribe', async (req, res) => {
     // Evitar error si el correo ya existe
     if (error.code === 'ER_DUP_ENTRY') return res.status(200).json({ message: 'El usuario ya estaba suscrito.' });
     console.error("❌ Error SUSCRIPCIÓN:", error.message);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// ==========================================
+// RUTA PARA EL BUSCADOR
+// ==========================================
+app.get('/api/search', async (req, res) => {
+  const { query } = req.query;
+  if (!query) return res.json({ videos: [], programs: [] });
+  
+  try {
+    const searchTerm = `%${query}%`;
+    
+    const [videos] = await pool.query(
+      'SELECT * FROM videos WHERE title LIKE ? OR description LIKE ? OR category LIKE ? LIMIT 10',
+      [searchTerm, searchTerm, searchTerm]
+    );
+    
+    const [programs] = await pool.query(
+      'SELECT * FROM programs WHERE name LIKE ? OR description LIKE ? OR category LIKE ? LIMIT 5',
+      [searchTerm, searchTerm, searchTerm]
+    );
+    
+    res.json({ videos, programs });
+  } catch (error) {
+    console.error("❌ Error BÚSQUEDA:", error.message);
     res.status(400).json({ error: error.message });
   }
 });
