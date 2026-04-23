@@ -19,8 +19,14 @@ if (!fs.existsSync(uploadsDir)) {
 try { fs.chmodSync(uploadsDir, 0o777); } catch(e) {}
 
 const storage = multer.diskStorage({
-  // Usar un string directo le dice a Multer que asegure y cree la carpeta automáticamente
-  destination: uploadsDir,
+  destination: function (req, file, cb) { 
+    console.log(" [Multer] Verificando directorio destino:", uploadsDir);
+    if (!fs.existsSync(uploadsDir)) {
+      console.log(" [Multer] La carpeta no existía, intentando crearla en este instante...");
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    cb(null, uploadsDir); 
+  },
   filename: function (req, file, cb) { 
     // Deducir extensión segura en caso de que el archivo original no la tenga
     let ext = path.extname(file.originalname || '').toLowerCase();
@@ -30,7 +36,9 @@ const storage = multer.diskStorage({
       else if (file.mimetype.startsWith('image/')) ext = '.jpg';
       else ext = '.bin';
     }
-    cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + ext);
+    const finalName = Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
+    console.log("📄 [Multer] Nombre generado para guardar:", finalName);
+    cb(null, finalName);
   }
 });
 const upload = multer({ storage: storage });
@@ -55,6 +63,7 @@ initDB();
 // ==========================================
 app.post('/api/upload', (req, res) => {
   try {
+    console.log("📥 [API] Petición de subida recibida. Analizando archivo...");
     upload.single('file')(req, res, (err) => {
       if (err) {
         console.error("🔥 Error crítico de Multer:", err);
