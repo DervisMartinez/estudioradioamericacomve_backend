@@ -19,8 +19,19 @@ if (!fs.existsSync(uploadsDir)) {
 try { fs.chmodSync(uploadsDir, 0o777); } catch(e) {}
 
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) { cb(null, uploadsDir); },
-  filename: function (req, file, cb) { cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_')); }
+  // Usar un string directo le dice a Multer que asegure y cree la carpeta automáticamente
+  destination: uploadsDir,
+  filename: function (req, file, cb) { 
+    // Deducir extensión segura en caso de que el archivo original no la tenga
+    let ext = path.extname(file.originalname || '').toLowerCase();
+    if (!ext || ext.length > 5) {
+      if (file.mimetype.startsWith('audio/')) ext = '.mp3';
+      else if (file.mimetype.startsWith('video/')) ext = '.mp4';
+      else if (file.mimetype.startsWith('image/')) ext = '.jpg';
+      else ext = '.bin';
+    }
+    cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + ext);
+  }
 });
 const upload = multer({ storage: storage });
 
@@ -45,8 +56,14 @@ initDB();
 app.post('/api/upload', (req, res) => {
   try {
     upload.single('file')(req, res, (err) => {
-      if (err) return res.status(400).json({ error: `Error de Multer: ${err.message}` });
-      if (!req.file) return res.status(400).json({ error: 'No se subió archivo' });
+      if (err) {
+        console.error("🔥 Error crítico de Multer:", err);
+        return res.status(400).json({ error: `Error de Multer: ${err.message}` });
+      }
+      if (!req.file) {
+        console.error("🔥 No se recibió ningún archivo en req.file");
+        return res.status(400).json({ error: 'No se subió archivo' });
+      }
 
       const fileName = req.file.filename;
       // Si es un video mp4, lo picamos y encriptamos con HLS
