@@ -18,6 +18,12 @@ if (!fs.existsSync(uploadsDir)) {
 }
 try { fs.chmodSync(uploadsDir, 0o777); } catch(e) {}
 
+const sponsorsDir = path.join(uploadsDir, 'sponsors');
+if (!fs.existsSync(sponsorsDir)) {
+  fs.mkdirSync(sponsorsDir, { recursive: true });
+}
+try { fs.chmodSync(sponsorsDir, 0o777); } catch(e) {}
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) { 
     console.log(" [Multer] Verificando directorio destino:", uploadsDir);
@@ -42,6 +48,23 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage: storage });
+
+// Configuración especial de Multer SOLO para Cuñas/Sponsors
+const sponsorStorage = multer.diskStorage({
+  destination: function (req, file, cb) { 
+    if (!fs.existsSync(sponsorsDir)) {
+      fs.mkdirSync(sponsorsDir, { recursive: true });
+    }
+    cb(null, sponsorsDir); 
+  },
+  filename: function (req, file, cb) { 
+    let ext = path.extname(file.originalname || '').toLowerCase();
+    if (!ext || ext.length > 5) ext = '.mp3';
+    const finalName = 'sponsor-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
+    cb(null, finalName);
+  }
+});
+const uploadSponsor = multer({ storage: sponsorStorage });
 
 // Middlewares
 app.use(cors()); // Permite que React (localhost:5173) se conecte sin errores
@@ -86,6 +109,24 @@ app.post('/api/upload', (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error en el try-catch de subida:", error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// RUTA EXCLUSIVA PARA SUBIR CUÑAS
+app.post('/api/upload/sponsor', (req, res) => {
+  try {
+    uploadSponsor.single('file')(req, res, (err) => {
+      if (err) {
+        console.error("🔥 Error de Multer (Sponsor):", err);
+        return res.status(400).json({ error: `Error de Multer: ${err.message}` });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: 'No se subió archivo' });
+      }
+      res.json({ url: `/uploads/sponsors/${req.file.filename}` });
+    });
+  } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
@@ -206,7 +247,7 @@ app.delete('/api/programs/:id', async (req, res) => {
 // ==========================================
 // RUTAS PARA CUÑAS (SPONSORS) (Camufladas para Nginx)
 // ==========================================
-app.get('/api/programs/sponsors/list', async (req, res) => {
+app.get('/api/upload/sponsors/list', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM sponsors ORDER BY createdAt DESC');
     res.json(rows);
@@ -216,7 +257,7 @@ app.get('/api/programs/sponsors/list', async (req, res) => {
   }
 });
 
-app.post('/api/programs/sponsors/add', async (req, res) => {
+app.post('/api/upload/sponsors/add', async (req, res) => {
   const { id, name, url, programId } = req.body;
   try {
     await pool.query(
@@ -230,7 +271,7 @@ app.post('/api/programs/sponsors/add', async (req, res) => {
   }
 });
 
-app.delete('/api/programs/sponsors/remove/:id', async (req, res) => {
+app.delete('/api/upload/sponsors/remove/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM sponsors WHERE id=?', [req.params.id]);
     res.json({ message: 'Cuña eliminada' });
