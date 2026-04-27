@@ -228,11 +228,11 @@ app.get('/api/sponsors', async (req, res) => {
 });
 
 app.post('/api/sponsors', async (req, res) => {
-  const { id, name, url, programId, createdAt } = req.body;
+  const { id, name, url, programId } = req.body;
   try {
     await pool.query(
-      `INSERT INTO sponsors (id, name, url, programId, createdAt) VALUES (?, ?, ?, ?, ?)`,
-      [id, name, url, programId || null, createdAt || new Date().toISOString()]
+      `INSERT INTO sponsors (id, name, url, programId) VALUES (?, ?, ?, ?)`,
+      [id, name, url, programId || null]
     );
     res.status(201).json({ message: 'Cuña creada con éxito' });
   } catch (error) {
