@@ -80,7 +80,7 @@ app.post('/api/upload', (req, res) => {
         return res.status(400).json({ error: 'No se subió archivo' });
       }
 
-      const isSponsor = req.query.type === 'sponsor';
+      const isSponsor = req.headers['x-action'] === 'upload_sponsor';
       let finalUrl = `/uploads/${req.file.filename}`;
       let finalPath = req.file.path;
 
@@ -118,7 +118,7 @@ app.post('/api/upload', (req, res) => {
 // ==========================================
 app.get('/api/videos', async (req, res) => {
   // 🕵️‍♂️ CAMUFLAJE: Si Nginx pide la lista de cuñas (sponsors)
-  if (req.query.action === 'get_sponsors') {
+  if (req.headers['x-action'] === 'get_sponsors') {
     try {
       const [rows] = await pool.query('SELECT * FROM sponsors ORDER BY createdAt DESC');
       return res.json(rows);
@@ -139,7 +139,7 @@ app.get('/api/videos', async (req, res) => {
 
 app.post('/api/videos', async (req, res) => {
   // 🕵️‍♂️ CAMUFLAJE: Si Nginx envía la orden de guardar una cuña
-  if (req.query.action === 'add_sponsor') {
+  if (req.headers['x-action'] === 'add_sponsor') {
     const { id, name, url, programId } = req.body;
     try {
       await pool.query(
@@ -183,7 +183,7 @@ app.put('/api/videos/:id', async (req, res) => {
 
 app.delete('/api/videos/:id', async (req, res) => {
   // 🕵️‍♂️ CAMUFLAJE: Si Nginx manda a eliminar una cuña
-  if (req.query.action === 'delete_sponsor') {
+  if (req.headers['x-action'] === 'delete_sponsor') {
     try {
       await pool.query('DELETE FROM sponsors WHERE id=?', [req.params.id]);
       return res.json({ message: 'Cuña eliminada' });
