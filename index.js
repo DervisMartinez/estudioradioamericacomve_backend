@@ -117,6 +117,17 @@ app.post('/api/upload', (req, res) => {
 // RUTAS PARA EPISODIOS (VIDEOS)
 // ==========================================
 app.get('/api/videos', async (req, res) => {
+  // 🕵️‍♂️ CAMUFLAJE: Si Nginx pide la lista de cuñas (sponsors)
+  if (req.query.action === 'get_sponsors') {
+    try {
+      const [rows] = await pool.query('SELECT * FROM sponsors ORDER BY createdAt DESC');
+      return res.json(rows);
+    } catch (error) {
+      console.error(" Error GET sponsors:", error.message);
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
   try {
     const [rows] = await pool.query('SELECT * FROM videos ORDER BY createdAt DESC');
     res.json(rows);
@@ -127,6 +138,21 @@ app.get('/api/videos', async (req, res) => {
 });
 
 app.post('/api/videos', async (req, res) => {
+  // 🕵️‍♂️ CAMUFLAJE: Si Nginx envía la orden de guardar una cuña
+  if (req.query.action === 'add_sponsor') {
+    const { id, name, url, programId } = req.body;
+    try {
+      await pool.query(
+        `INSERT INTO sponsors (id, name, url, programId) VALUES (?, ?, ?, ?)`,
+        [id, name, url, programId || null]
+      );
+      return res.status(201).json({ message: 'Cuña creada con éxito' });
+    } catch (error) {
+      console.error(" Error POST sponsors:", error.message);
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
   const { id, title, category, thumbnail, description, isFeatured, isShort, isAudio, url, duration, views, createdAt, programId, releaseDate, pressNoteUrl } = req.body;
   try {
     await pool.query(
@@ -156,6 +182,16 @@ app.put('/api/videos/:id', async (req, res) => {
 });
 
 app.delete('/api/videos/:id', async (req, res) => {
+  // 🕵️‍♂️ CAMUFLAJE: Si Nginx manda a eliminar una cuña
+  if (req.query.action === 'delete_sponsor') {
+    try {
+      await pool.query('DELETE FROM sponsors WHERE id=?', [req.params.id]);
+      return res.json({ message: 'Cuña eliminada' });
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
   try {
     await pool.query('DELETE FROM videos WHERE id=?', [req.params.id]);
     res.json({ message: 'Video eliminado' });
@@ -222,43 +258,6 @@ app.delete('/api/programs/:id', async (req, res) => {
     res.json({ message: 'Programa eliminado' });
   } catch (error) {
     console.error(" Error DELETE programs:", error.message);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// ==========================================
-// RUTAS PARA CUÑAS (SPONSORS) (Camufladas para Nginx)
-// ==========================================
-app.get('/api/videos/sponsors', async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT * FROM sponsors ORDER BY createdAt DESC');
-    res.json(rows);
-  } catch (error) {
-    console.error(" Error GET sponsors:", error.message);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-app.post('/api/videos/sponsors', async (req, res) => {
-  const { id, name, url, programId } = req.body;
-  try {
-    await pool.query(
-      `INSERT INTO sponsors (id, name, url, programId) VALUES (?, ?, ?, ?)`,
-      [id, name, url, programId || null]
-    );
-    res.status(201).json({ message: 'Cuña creada con éxito' });
-  } catch (error) {
-    console.error(" Error POST sponsors:", error.message);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-app.delete('/api/videos/sponsors/:id', async (req, res) => {
-  try {
-    await pool.query('DELETE FROM sponsors WHERE id=?', [req.params.id]);
-    res.json({ message: 'Cuña eliminada' });
-  } catch (error) {
-    console.error("❌ Error DELETE sponsors:", error.message);
     res.status(400).json({ error: error.message });
   }
 });
