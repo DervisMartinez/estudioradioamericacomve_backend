@@ -49,23 +49,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// Configuración especial de Multer SOLO para Cuñas/Sponsors
-const sponsorStorage = multer.diskStorage({
-  destination: function (req, file, cb) { 
-    if (!fs.existsSync(sponsorsDir)) {
-      fs.mkdirSync(sponsorsDir, { recursive: true });
-    }
-    cb(null, sponsorsDir); 
-  },
-  filename: function (req, file, cb) { 
-    let ext = path.extname(file.originalname || '').toLowerCase();
-    if (!ext || ext.length > 5) ext = '.mp3';
-    const finalName = 'sponsor-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
-    cb(null, finalName);
-  }
-});
-const uploadSponsor = multer({ storage: sponsorStorage });
-
 // Middlewares
 app.use(cors()); // Permite que React (localhost:5173) se conecte sin errores
 app.use(express.json({ limit: '500mb' })); // Límite masivo para Base64 y videos
@@ -97,36 +80,35 @@ app.post('/api/upload', (req, res) => {
         return res.status(400).json({ error: 'No se subió archivo' });
       }
 
+      const isSponsor = req.query.type === 'sponsor';
+      let finalUrl = `/uploads/${req.file.filename}`;
+      let finalPath = req.file.path;
+
+      if (isSponsor) {
+        const newPath = path.join(sponsorsDir, req.file.filename);
+        try {
+          fs.renameSync(req.file.path, newPath);
+          finalUrl = `/uploads/sponsors/${req.file.filename}`;
+          finalPath = newPath;
+          console.log(`✅ Archivo movido a la carpeta de sponsors: ${finalUrl}`);
+        } catch (moveError) {
+          console.error("🔥 Error moviendo archivo de sponsor:", moveError);
+          // Si falla el movimiento, se usa la ruta original. Es un fallback seguro.
+        }
+      }
+
       const fileName = req.file.filename;
       // Si es un video mp4, lo picamos y encriptamos con HLS
       if (req.file.mimetype.startsWith('video/') && fileName.endsWith('.mp4')) {
         const hlsFolderId = fileName.split('.')[0]; // Usamos el timestamp como nombre de carpeta
-        const hlsUrl = processVideoToHLS(req.file.path, uploadsDir, hlsFolderId);
+        const hlsUrl = processVideoToHLS(finalPath, uploadsDir, hlsFolderId);
         return res.json({ url: hlsUrl });
       }
 
-      res.json({ url: `/uploads/${fileName}` });
+      res.json({ url: finalUrl });
     });
   } catch (error) {
     console.error("❌ Error en el try-catch de subida:", error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// RUTA EXCLUSIVA PARA SUBIR CUÑAS
-app.post('/api/upload/sponsor', (req, res) => {
-  try {
-    uploadSponsor.single('file')(req, res, (err) => {
-      if (err) {
-        console.error("🔥 Error de Multer (Sponsor):", err);
-        return res.status(400).json({ error: `Error de Multer: ${err.message}` });
-      }
-      if (!req.file) {
-        return res.status(400).json({ error: 'No se subió archivo' });
-      }
-      res.json({ url: `/uploads/sponsors/${req.file.filename}` });
-    });
-  } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
@@ -247,7 +229,7 @@ app.delete('/api/programs/:id', async (req, res) => {
 // ==========================================
 // RUTAS PARA CUÑAS (SPONSORS) (Camufladas para Nginx)
 // ==========================================
-app.get('/api/upload/sponsors/list', async (req, res) => {
+app.get('/api/videos/sponsors', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM sponsors ORDER BY createdAt DESC');
     res.json(rows);
@@ -257,7 +239,7 @@ app.get('/api/upload/sponsors/list', async (req, res) => {
   }
 });
 
-app.post('/api/upload/sponsors/add', async (req, res) => {
+app.post('/api/videos/sponsors', async (req, res) => {
   const { id, name, url, programId } = req.body;
   try {
     await pool.query(
@@ -271,7 +253,7 @@ app.post('/api/upload/sponsors/add', async (req, res) => {
   }
 });
 
-app.delete('/api/upload/sponsors/remove/:id', async (req, res) => {
+app.delete('/api/videos/sponsors/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM sponsors WHERE id=?', [req.params.id]);
     res.json({ message: 'Cuña eliminada' });
