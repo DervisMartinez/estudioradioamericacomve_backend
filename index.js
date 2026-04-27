@@ -96,7 +96,7 @@ app.post('/api/upload', (req, res) => {
 // ==========================================
 // RUTAS PARA CUÑAS (SPONSORS)
 // ==========================================
-app.get('/api/sponsors', async (req, res) => {
+app.get('/api/programs/sponsors', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM sponsors ORDER BY createdAt DESC');
     res.json(rows);
@@ -106,7 +106,7 @@ app.get('/api/sponsors', async (req, res) => {
   }
 });
 
-app.post('/api/sponsors', async (req, res) => {
+app.post('/api/programs/sponsors', async (req, res) => {
   const { id, name, url, programId } = req.body;
   try {
     await pool.query(
@@ -120,7 +120,7 @@ app.post('/api/sponsors', async (req, res) => {
   }
 });
 
-app.delete('/api/sponsors/:id', async (req, res) => {
+app.delete('/api/programs/sponsors/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM sponsors WHERE id=?', [req.params.id]);
     res.json({ message: 'Cuña eliminada' });
