@@ -18,12 +18,6 @@ if (!fs.existsSync(uploadsDir)) {
 }
 try { fs.chmodSync(uploadsDir, 0o777); } catch(e) {}
 
-const sponsorsDir = path.join(uploadsDir, 'sponsors');
-if (!fs.existsSync(sponsorsDir)) {
-  fs.mkdirSync(sponsorsDir, { recursive: true });
-}
-try { fs.chmodSync(sponsorsDir, 0o777); } catch(e) {}
-
 const storage = multer.diskStorage({
   destination: function (req, file, cb) { 
     console.log(" [Multer] Verificando directorio destino:", uploadsDir);
@@ -80,22 +74,8 @@ app.post('/api/upload', (req, res) => {
         return res.status(400).json({ error: 'No se subió archivo' });
       }
 
-      const isSponsor = req.query.type === 'sponsor';
       let finalUrl = `/uploads/${req.file.filename}`;
       let finalPath = req.file.path;
-
-      if (isSponsor) {
-        const newPath = path.join(sponsorsDir, req.file.filename);
-        try {
-          fs.renameSync(req.file.path, newPath);
-          finalUrl = `/uploads/sponsors/${req.file.filename}`;
-          finalPath = newPath;
-          console.log(`✅ Archivo movido a la carpeta de sponsors: ${finalUrl}`);
-        } catch (moveError) {
-          console.error("🔥 Error moviendo archivo de sponsor:", moveError);
-          // Si falla el movimiento, se usa la ruta original. Es un fallback seguro.
-        }
-      }
 
       const fileName = req.file.filename;
       // Si es un video mp4, lo picamos y encriptamos con HLS
