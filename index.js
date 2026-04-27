@@ -58,17 +58,6 @@ app.use((err, req, res, next) => {
 // Inicializar las tablas de la BD (viene de tu db.js)
 initDB();
 
-// Inicializar tabla de cuñas (sponsors) si no existe
-pool.query(`
-  CREATE TABLE IF NOT EXISTS sponsors (
-    id VARCHAR(50) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    url TEXT NOT NULL,
-    programId VARCHAR(50),
-    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`).catch(console.error);
-
 // ==========================================
 // RUTA PARA SUBIR ARCHIVOS (FOTOS/VIDEOS)
 // ==========================================

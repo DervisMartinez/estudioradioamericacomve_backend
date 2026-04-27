@@ -101,6 +101,17 @@ const initDB = async () => {
       )
     `);
 
+    // 5. Crear Tabla de Cuñas (Sponsors)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sponsors (
+        id VARCHAR(50) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        url TEXT NOT NULL,
+        programId VARCHAR(50),
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('📦 Tablas de base de datos sincronizadas y listas');
   } catch (err) {
     console.error('❌ Error fatal con la base de datos:', err.message);
