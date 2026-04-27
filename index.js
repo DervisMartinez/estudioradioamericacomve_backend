@@ -204,19 +204,19 @@ app.delete('/api/programs/:id', async (req, res) => {
 });
 
 // ==========================================
-// RUTAS PARA CUÑAS (SPONSORS)
+// RUTAS PARA CUÑAS (SPONSORS) (Camufladas para Nginx)
 // ==========================================
-app.get('/api/sponsors', async (req, res) => {
+app.get('/api/programs/sponsors/list', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM sponsors ORDER BY createdAt DESC');
     res.json(rows);
   } catch (error) {
-    console.error("❌ Error GET sponsors:", error.message);
+    console.error(" Error GET sponsors:", error.message);
     res.status(400).json({ error: error.message });
   }
 });
 
-app.post('/api/sponsors', async (req, res) => {
+app.post('/api/programs/sponsors/add', async (req, res) => {
   const { id, name, url, programId } = req.body;
   try {
     await pool.query(
@@ -225,12 +225,12 @@ app.post('/api/sponsors', async (req, res) => {
     );
     res.status(201).json({ message: 'Cuña creada con éxito' });
   } catch (error) {
-    console.error("❌ Error POST sponsors:", error.message);
+    console.error(" Error POST sponsors:", error.message);
     res.status(400).json({ error: error.message });
   }
 });
 
-app.delete('/api/sponsors/:id', async (req, res) => {
+app.delete('/api/programs/sponsors/remove/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM sponsors WHERE id=?', [req.params.id]);
     res.json({ message: 'Cuña eliminada' });
