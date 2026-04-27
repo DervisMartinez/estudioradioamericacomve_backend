@@ -58,6 +58,17 @@ app.use((err, req, res, next) => {
 // Inicializar las tablas de la BD (viene de tu db.js)
 initDB();
 
+// Inicializar tabla de cuñas (sponsors) si no existe
+pool.query(`
+  CREATE TABLE IF NOT EXISTS sponsors (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    url TEXT NOT NULL,
+    programId VARCHAR(50),
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`).catch(console.error);
+
 // ==========================================
 // RUTA PARA SUBIR ARCHIVOS (FOTOS/VIDEOS)
 // ==========================================
@@ -199,6 +210,43 @@ app.delete('/api/programs/:id', async (req, res) => {
     res.json({ message: 'Programa eliminado' });
   } catch (error) {
     console.error(" Error DELETE programs:", error.message);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// ==========================================
+// RUTAS PARA CUÑAS (SPONSORS)
+// ==========================================
+app.get('/api/sponsors', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM sponsors ORDER BY createdAt DESC');
+    res.json(rows);
+  } catch (error) {
+    console.error("❌ Error GET sponsors:", error.message);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/sponsors', async (req, res) => {
+  const { id, name, url, programId, createdAt } = req.body;
+  try {
+    await pool.query(
+      `INSERT INTO sponsors (id, name, url, programId, createdAt) VALUES (?, ?, ?, ?, ?)`,
+      [id, name, url, programId || null, createdAt || new Date().toISOString()]
+    );
+    res.status(201).json({ message: 'Cuña creada con éxito' });
+  } catch (error) {
+    console.error("❌ Error POST sponsors:", error.message);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/sponsors/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM sponsors WHERE id=?', [req.params.id]);
+    res.json({ message: 'Cuña eliminada' });
+  } catch (error) {
+    console.error("❌ Error DELETE sponsors:", error.message);
     res.status(400).json({ error: error.message });
   }
 });
