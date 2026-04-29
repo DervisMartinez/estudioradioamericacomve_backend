@@ -149,7 +149,7 @@ app.post('/api/videos', async (req, res) => {
     await pool.query(
       `INSERT INTO videos (id, title, category, thumbnail, description, isFeatured, isShort, isAudio, isLive, url, duration, views, createdAt, programId, releaseDate, pressNoteUrl) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, title, category, thumbnail, description, isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, isLive ? 1 : 0, url, duration, views || 0, createdAt, programId || null, releaseDate || null, pressNoteUrl || null]
+      [id, title, category, thumbnail, description, isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, (isLive === true || isLive === 1 || String(isLive) === 'true') ? 1 : 0, url, duration, views || 0, createdAt, programId || null, releaseDate || null, pressNoteUrl || null]
     );
     res.status(201).json({ message: 'Video creado con éxito' });
   } catch (error) {
@@ -163,7 +163,7 @@ app.put('/api/videos/:id', async (req, res) => {
   try {
     await pool.query(
       `UPDATE videos SET title=?, category=?, thumbnail=?, description=?, isFeatured=?, isShort=?, isAudio=?, isLive=?, url=?, duration=?, programId=?, releaseDate=?, pressNoteUrl=? WHERE id=?`,
-      [title, category, thumbnail, description, isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, isLive ? 1 : 0, url, duration, programId || null, releaseDate || null, pressNoteUrl || null, req.params.id]
+      [title, category, thumbnail, description, isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, (isLive === true || isLive === 1 || String(isLive) === 'true') ? 1 : 0, url, duration, programId || null, releaseDate || null, pressNoteUrl || null, req.params.id]
     );
     res.json({ message: 'Video actualizado' });
   } catch (error) {
