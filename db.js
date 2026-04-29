@@ -64,6 +64,7 @@ const initDB = async () => {
 
     try { await pool.query('ALTER TABLE videos ADD COLUMN releaseDate VARCHAR(100) NULL'); } catch(e) {}
     try { await pool.query('ALTER TABLE videos ADD COLUMN pressNoteUrl LONGTEXT NULL'); } catch(e) {}
+    try { await pool.query('ALTER TABLE videos ADD COLUMN isLive TINYINT(1) DEFAULT 0'); } catch(e) {}
 
     // 3. Crear Tabla del Perfil de Usuario Administrador
     await pool.query(`
