@@ -135,6 +135,8 @@ app.delete('/api/sponsors/:id', async (req, res) => {
 // ==========================================
 app.get('/api/videos', async (req, res) => {
   try {
+    // Forzar a que no se guarde en caché nunca más (Evitar el HTTP 304)
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     const [rows] = await pool.query('SELECT * FROM videos ORDER BY createdAt DESC');
     res.json(rows);
   } catch (error) {
@@ -160,6 +162,7 @@ app.post('/api/videos', async (req, res) => {
 
 app.put('/api/videos/:id', async (req, res) => {
   const { title, category, thumbnail, description, isFeatured, isShort, isAudio, isLive, url, duration, programId, releaseDate, pressNoteUrl } = req.body;
+  console.log(`[PUT] Actualizando video ${req.params.id} | ¿Es en vivo (isLive)?:`, isLive);
   try {
     await pool.query(
       `UPDATE videos SET title=?, category=?, thumbnail=?, description=?, isFeatured=?, isShort=?, isAudio=?, isLive=?, url=?, duration=?, programId=?, releaseDate=?, pressNoteUrl=? WHERE id=?`,
