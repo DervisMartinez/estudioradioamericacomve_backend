@@ -148,7 +148,16 @@ app.get('/api/videos', async (req, res) => {
     // Forzar a que no se guarde en caché nunca más (Evitar el HTTP 304)
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     const [rows] = await pool.query('SELECT * FROM videos ORDER BY createdAt DESC');
-    res.json(rows);
+    
+    // Convertimos los 0 y 1 de MySQL a Booleanos (false/true) para que React marque las casillas sin fallos
+    const formatted = rows.map(v => ({
+      ...v,
+      isFeatured: !!v.isFeatured,
+      isShort: !!v.isShort,
+      isAudio: !!v.isAudio,
+      isLive: !!v.isLive
+    }));
+    res.json(formatted);
   } catch (error) {
     console.error("❌ Error GET videos:", error.message);
     res.status(400).json({ error: error.message });
@@ -157,11 +166,15 @@ app.get('/api/videos', async (req, res) => {
 
 app.post('/api/videos', async (req, res) => {
   const { id, title, category, thumbnail, description, isFeatured, isShort, isAudio, isLive, url, duration, views, createdAt, programId, releaseDate, pressNoteUrl } = req.body;
+  
+  // Normalizador a prueba de balas para atrapar "true", true, "1", 1 y "on"
+  const parseBool = (val) => (val === true || String(val).toLowerCase() === 'true' || val === 1 || String(val) === '1' || val === 'on') ? 1 : 0;
+
   try {
     await pool.query(
       `INSERT INTO videos (id, title, category, thumbnail, description, isFeatured, isShort, isAudio, isLive, url, duration, views, createdAt, programId, releaseDate, pressNoteUrl) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, title, category, thumbnail, description, isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, (isLive === true || isLive === 1 || String(isLive) === 'true') ? 1 : 0, url, duration, views || 0, createdAt, programId || null, releaseDate || null, pressNoteUrl || null]
+      [id, title, category, thumbnail, description, parseBool(isFeatured), parseBool(isShort), parseBool(isAudio), parseBool(isLive), url, duration, views || 0, createdAt, programId || null, releaseDate || null, pressNoteUrl || null]
     );
     res.status(201).json({ message: 'Video creado con éxito' });
   } catch (error) {
@@ -172,11 +185,14 @@ app.post('/api/videos', async (req, res) => {
 
 app.put('/api/videos/:id', async (req, res) => {
   const { title, category, thumbnail, description, isFeatured, isShort, isAudio, isLive, url, duration, programId, releaseDate, pressNoteUrl } = req.body;
-  console.log(`[PUT] Actualizando video ${req.params.id} | ¿Es en vivo (isLive)?:`, isLive);
+  
+  const parseBool = (val) => (val === true || String(val).toLowerCase() === 'true' || val === 1 || String(val) === '1' || val === 'on') ? 1 : 0;
+  console.log(`[PUT] Actualizando video ${req.params.id} | isLive recibido:`, isLive, '-> Guardado como:', parseBool(isLive));
+  
   try {
     await pool.query(
       `UPDATE videos SET title=?, category=?, thumbnail=?, description=?, isFeatured=?, isShort=?, isAudio=?, isLive=?, url=?, duration=?, programId=?, releaseDate=?, pressNoteUrl=? WHERE id=?`,
-      [title, category, thumbnail, description, isFeatured ? 1 : 0, isShort ? 1 : 0, isAudio ? 1 : 0, (isLive === true || isLive === 1 || String(isLive) === 'true') ? 1 : 0, url, duration, programId || null, releaseDate || null, pressNoteUrl || null, req.params.id]
+      [title, category, thumbnail, description, parseBool(isFeatured), parseBool(isShort), parseBool(isAudio), parseBool(isLive), url, duration, programId || null, releaseDate || null, pressNoteUrl || null, req.params.id]
     );
     res.json({ message: 'Video actualizado' });
   } catch (error) {
