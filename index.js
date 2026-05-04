@@ -167,6 +167,7 @@ app.get('/api/videos', async (req, res) => {
 app.post('/api/videos', async (req, res) => {
   const { id, title, category, thumbnail, description, isFeatured, isShort, isAudio, isLive, url, duration, views, createdAt, programId, releaseDate, pressNoteUrl } = req.body;
   
+  console.log("📦 [POST] Payload completo recibido:", req.body);
   // Normalizador a prueba de balas para atrapar "true", true, "1", 1 y "on"
   const parseBool = (val) => (val === true || String(val).toLowerCase() === 'true' || val === 1 || String(val) === '1' || val === 'on') ? 1 : 0;
 
@@ -186,6 +187,7 @@ app.post('/api/videos', async (req, res) => {
 app.put('/api/videos/:id', async (req, res) => {
   const { title, category, thumbnail, description, isFeatured, isShort, isAudio, isLive, url, duration, programId, releaseDate, pressNoteUrl } = req.body;
   
+  console.log("📦 [PUT] Payload completo recibido:", req.body);
   const parseBool = (val) => (val === true || String(val).toLowerCase() === 'true' || val === 1 || String(val) === '1' || val === 'on') ? 1 : 0;
   console.log(`[PUT] Actualizando video ${req.params.id} | isLive recibido:`, isLive, '-> Guardado como:', parseBool(isLive));
   
