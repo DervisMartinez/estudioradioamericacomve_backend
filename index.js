@@ -20,15 +20,11 @@ try { fs.chmodSync(uploadsDir, 0o777); } catch(e) {}
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) { 
-    try {
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-      cb(null, uploadsDir); 
-    } catch (error) {
-      console.error("🔥 Error de permisos al acceder a la carpeta:", error);
-      cb(error, uploadsDir);
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
     }
+    console.log("📂 [Multer] Guardando archivo internamente en:", uploadsDir);
+    cb(null, uploadsDir); 
   },
   filename: function (req, file, cb) { 
     // Deducir extensión segura en caso de que el archivo original no la tenga
@@ -80,6 +76,9 @@ app.post('/api/upload', (req, res) => {
     upload.single('file')(req, res, (err) => {
       if (err) {
         console.error("🔥 Error crítico de Multer:", err);
+        if (err.message.includes('ENOENT')) {
+          return res.status(400).json({ error: 'Conexión cortada abruptamente. Tu servidor principal (VPS/Plesk) bloqueó el peso del video.' });
+        }
         return res.status(400).json({ error: `Error de Multer: ${err.message}` });
       }
       if (!req.file) {
