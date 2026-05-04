@@ -7,6 +7,9 @@ WORKDIR /app
 # Copiamos los archivos de dependencias primero (para optimizar la caché de Docker)
 COPY package*.json ./
 
+# Instalamos FFmpeg para el procesamiento de videos HLS
+RUN apk add --no-cache ffmpeg
+
 # Instalamos las dependencias
 RUN npm install
 

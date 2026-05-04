@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { pool, initDB } = require('./db');
 const { sendWelcomeNewsletter } = require('./utils/services/mailer');
-// const { processVideoToHLS } = require('./utils/hlsProcessor');
+const { processVideoToHLS } = require('./utils/hlsProcessor');
 
 const app = express();
 const port = process.env.PORT || 3005;
@@ -93,8 +93,10 @@ app.post('/api/upload', (req, res) => {
       // Si es un video mp4, lo picamos y encriptamos con HLS
       if (req.file.mimetype.startsWith('video/') && fileName.endsWith('.mp4')) {
         const hlsFolderId = fileName.split('.')[0]; // Usamos el timestamp como nombre de carpeta
-        // const hlsUrl = processVideoToHLS(finalPath, uploadsDir, hlsFolderId);
-        return res.json({ url: finalUrl }); // Devolvemos la URL original temporalmente
+        const hlsUrl = processVideoToHLS(finalPath, uploadsDir, hlsFolderId);
+        
+        // Si FFmpeg procesó bien el archivo, devolvemos el .m3u8, si no, caemos al .mp4 original
+        return res.json({ url: hlsUrl || finalUrl });
       }
 
       res.json({ url: finalUrl });
