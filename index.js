@@ -12,7 +12,7 @@ const app = express();
 const port = process.env.PORT || 3005;
 
 // Preparar carpeta de subidas de archivos
-const uploadsDir = path.join(__dirname, 'uploads');
+const uploadsDir = path.resolve(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -20,12 +20,15 @@ try { fs.chmodSync(uploadsDir, 0o777); } catch(e) {}
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) { 
-    console.log(" [Multer] Verificando directorio destino:", uploadsDir);
-    if (!fs.existsSync(uploadsDir)) {
-      console.log(" [Multer] La carpeta no existía, intentando crearla en este instante...");
-      fs.mkdirSync(uploadsDir, { recursive: true });
+    try {
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      cb(null, uploadsDir); 
+    } catch (error) {
+      console.error("🔥 Error de permisos al acceder a la carpeta:", error);
+      cb(error, uploadsDir);
     }
-    cb(null, uploadsDir); 
   },
   filename: function (req, file, cb) { 
     // Deducir extensión segura en caso de que el archivo original no la tenga
