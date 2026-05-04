@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { pool, initDB } = require('./db');
 const { sendWelcomeNewsletter } = require('./utils/services/mailer');
-const { processVideoToHLS } = require('./utils/hlsProcessor');
+// const { processVideoToHLS } = require('./utils/hlsProcessor');
 
 const app = express();
 const port = process.env.PORT || 3005;
@@ -49,6 +49,16 @@ app.use(express.json({ limit: '500mb' })); // Límite masivo para Base64 y video
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use('/uploads', express.static(uploadsDir));
 
+// ==========================================
+// Escudo Anti-Caché Global para la API
+// ==========================================
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
 // Escudo global: Evita que Node.js colapse con payloads muy pesados
 app.use((err, req, res, next) => {
   console.error("🔥 Error de Express o JSON:", err.message);
@@ -81,8 +91,8 @@ app.post('/api/upload', (req, res) => {
       // Si es un video mp4, lo picamos y encriptamos con HLS
       if (req.file.mimetype.startsWith('video/') && fileName.endsWith('.mp4')) {
         const hlsFolderId = fileName.split('.')[0]; // Usamos el timestamp como nombre de carpeta
-        const hlsUrl = processVideoToHLS(finalPath, uploadsDir, hlsFolderId);
-        return res.json({ url: hlsUrl });
+        // const hlsUrl = processVideoToHLS(finalPath, uploadsDir, hlsFolderId);
+        return res.json({ url: finalUrl }); // Devolvemos la URL original temporalmente
       }
 
       res.json({ url: finalUrl });
