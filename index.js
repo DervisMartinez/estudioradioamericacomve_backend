@@ -42,6 +42,9 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+const chunkStorage = multer.memoryStorage();
+const uploadChunk = multer({ storage: chunkStorage });
+
 // Middlewares
 app.use(cors()); // Permite que React (localhost:5173) se conecte sin errores
 app.use(express.json({ limit: '500mb' })); // Límite masivo para Base64 y videos
@@ -70,7 +73,7 @@ initDB();
 // ==========================================
 // RUTA PARA SUBIR ARCHIVOS (FOTOS/VIDEOS)
 // ==========================================
-app.post('/api/upload', (req, res) => {
+app.post('/api/uploads', (req, res) => {
   try {
     console.log("📥 [API] Petición de subida recibida. Analizando archivo...");
     upload.single('file')(req, res, (err) => {
@@ -104,6 +107,43 @@ app.post('/api/upload', (req, res) => {
   } catch (error) {
     console.error("❌ Error en el try-catch de subida:", error);
     res.status(400).json({ error: error.message });
+  }
+});
+
+// ==========================================
+// RUTA PARA SUBIR ARCHIVOS POR FRAGMENTOS (CHUNKS ANTIBLOQUEO)
+// ==========================================
+app.post('/api/upload/chunk', uploadChunk.single('file'), (req, res) => {
+  try {
+    const { chunkIndex, totalChunks, originalName, folderId } = req.body;
+    const chunk = req.file.buffer;
+    
+    const tempPath = path.join(uploadsDir, `temp_${folderId}`);
+    fs.appendFileSync(tempPath, chunk); // Añadir el pedacito de 2MB
+    
+    if (parseInt(chunkIndex) === parseInt(totalChunks) - 1) {
+      // Es el último pedazo, armar archivo final
+      let ext = path.extname(originalName || '').toLowerCase();
+      if (!ext || ext.length > 5) ext = originalName.toLowerCase().endsWith('.mp4') ? '.mp4' : '.mp3';
+      
+      const finalName = Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
+      const finalPath = path.join(uploadsDir, finalName);
+      
+      fs.renameSync(tempPath, finalPath);
+      let finalUrl = `/uploads/${finalName}`;
+      
+      if (originalName.toLowerCase().endsWith('.mp4')) {
+        console.log(`🎬 Procesando HLS para el video ensamblado...`);
+        const hlsFolderId = finalName.split('.')[0];
+        const hlsUrl = processVideoToHLS(finalPath, uploadsDir, hlsFolderId);
+        return res.json({ url: hlsUrl || finalUrl });
+      }
+      return res.json({ url: finalUrl });
+    }
+    res.json({ message: `Chunk ${chunkIndex} procesado` });
+  } catch (error) {
+    console.error("❌ Error procesando chunk:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 
