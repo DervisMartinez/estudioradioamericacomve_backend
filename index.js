@@ -27,23 +27,19 @@ const storage = multer.diskStorage({
     cb(null, uploadsDir); 
   },
   filename: function (req, file, cb) { 
-    // Deducir extensión segura en caso de que el archivo original no la tenga
-    let ext = path.extname(file.originalname || '').toLowerCase();
-    if (!ext || ext.length > 5) {
-      if (file.mimetype.startsWith('audio/')) ext = '.mp3';
-      else if (file.mimetype.startsWith('video/')) ext = '.mp4';
-      else if (file.mimetype.startsWith('image/')) ext = '.jpg';
-      else ext = '.bin';
-    }
-    const finalName = Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
-    console.log("📄 [Multer] Nombre generado para guardar:", finalName);
+    // 🛑 SOLUCIÓN ENOENT: Destruimos el nombre original del archivo para evitar 
+    // que rutas falsas de Windows (C:\fakepath...) rompan el disco de Linux.
+    let ext = '.bin';
+    if (file.mimetype.startsWith('audio/')) ext = '.mp3';
+    else if (file.mimetype.startsWith('video/')) ext = '.mp4';
+    else if (file.mimetype.startsWith('image/')) ext = '.jpg';
+    
+    const finalName = Date.now() + '-radioamerica' + Math.round(Math.random() * 1000) + ext;
+    console.log(" [Multer] Nombre generado para guardar:", finalName);
     cb(null, finalName);
   }
 });
 const upload = multer({ storage: storage });
-
-const chunkStorage = multer.memoryStorage();
-const uploadChunk = multer({ storage: chunkStorage });
 
 // Middlewares
 app.use(cors()); // Permite que React (localhost:5173) se conecte sin errores
@@ -73,7 +69,7 @@ initDB();
 // ==========================================
 // RUTA PARA SUBIR ARCHIVOS (FOTOS/VIDEOS)
 // ==========================================
-app.post('/api/uploads', (req, res) => {
+app.post('/api/upload', (req, res) => {
   try {
     console.log("📥 [API] Petición de subida recibida. Analizando archivo...");
     upload.single('file')(req, res, (err) => {
@@ -107,43 +103,6 @@ app.post('/api/uploads', (req, res) => {
   } catch (error) {
     console.error("❌ Error en el try-catch de subida:", error);
     res.status(400).json({ error: error.message });
-  }
-});
-
-// ==========================================
-// RUTA PARA SUBIR ARCHIVOS POR FRAGMENTOS (CHUNKS ANTIBLOQUEO)
-// ==========================================
-app.post('/api/upload/chunk', uploadChunk.single('file'), (req, res) => {
-  try {
-    const { chunkIndex, totalChunks, originalName, folderId } = req.body;
-    const chunk = req.file.buffer;
-    
-    const tempPath = path.join(uploadsDir, `temp_${folderId}`);
-    fs.appendFileSync(tempPath, chunk); // Añadir el pedacito de 2MB
-    
-    if (parseInt(chunkIndex) === parseInt(totalChunks) - 1) {
-      // Es el último pedazo, armar archivo final
-      let ext = path.extname(originalName || '').toLowerCase();
-      if (!ext || ext.length > 5) ext = originalName.toLowerCase().endsWith('.mp4') ? '.mp4' : '.mp3';
-      
-      const finalName = Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
-      const finalPath = path.join(uploadsDir, finalName);
-      
-      fs.renameSync(tempPath, finalPath);
-      let finalUrl = `/uploads/${finalName}`;
-      
-      if (originalName.toLowerCase().endsWith('.mp4')) {
-        console.log(`🎬 Procesando HLS para el video ensamblado...`);
-        const hlsFolderId = finalName.split('.')[0];
-        const hlsUrl = processVideoToHLS(finalPath, uploadsDir, hlsFolderId);
-        return res.json({ url: hlsUrl || finalUrl });
-      }
-      return res.json({ url: finalUrl });
-    }
-    res.json({ message: `Chunk ${chunkIndex} procesado` });
-  } catch (error) {
-    console.error("❌ Error procesando chunk:", error);
-    res.status(500).json({ error: error.message });
   }
 });
 
@@ -349,6 +308,16 @@ app.put('/api/profile', async (req, res) => {
 // ==========================================
 // RUTAS PARA NEWSLETTER (SUSCRIPCIONES)
 // ==========================================
+app.get('/api/subscribers', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM subscribers ORDER BY subscribedAt DESC');
+    res.json(rows);
+  } catch (error) {
+    console.error("❌ Error GET subscribers:", error.message);
+    res.status(400).json({ error: error.message });
+  }
+});
+
 app.post('/api/subscribe', async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'El email es requerido' });
