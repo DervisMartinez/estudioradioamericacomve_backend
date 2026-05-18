@@ -5,7 +5,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const { pool, initDB } = require('./db');
-const { sendWelcomeNewsletter } = require('./utils/services/mailer');
+const { sendWelcomeNewsletter, sendNewVideoNotification } = require('./utils/services/mailer');
 const { processVideoToHLS } = require('./utils/hlsProcessor');
 
 const app = express();
@@ -168,7 +168,7 @@ app.get('/api/videos', async (req, res) => {
 });
 
 app.post('/api/videos', async (req, res) => {
-  const { id, title, category, thumbnail, description, isFeatured, isShort, isAudio, isLive, url, duration, views, createdAt, programId, releaseDate, pressNoteUrl } = req.body;
+  const { id, title, category, thumbnail, description, isFeatured, isShort, isAudio, isLive, url, duration, views, createdAt, programId, releaseDate, pressNoteUrl, sendNewsletter } = req.body;
   
   console.log("📦 [POST] Payload completo recibido:", req.body);
   // Normalizador a prueba de balas para atrapar "true", true, "1", 1 y "on"
@@ -181,6 +181,17 @@ app.post('/api/videos', async (req, res) => {
       [id, title, category, thumbnail, description, parseBool(isFeatured), parseBool(isShort), parseBool(isAudio), parseBool(isLive), url, duration, views || 0, createdAt, programId || null, releaseDate || null, pressNoteUrl || null]
     );
     res.status(201).json({ message: 'Video creado con éxito' });
+
+    // Disparamos el correo en background si fue solicitado
+    if (sendNewsletter) {
+      try {
+        const [subs] = await pool.query('SELECT email FROM subscribers');
+        const emails = subs.map(s => s.email);
+        if (emails.length > 0) {
+          sendNewVideoNotification(emails, req.body).catch(e => console.error("Error en envío silencioso:", e));
+        }
+      } catch(e) { console.error("Error obteniendo suscriptores para el newsletter:", e); }
+    }
   } catch (error) {
     console.error("❌ Error POST videos:", error.message);
     res.status(400).json({ error: error.message });

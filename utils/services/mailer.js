@@ -82,4 +82,33 @@ const sendWelcomeNewsletter = async (email, featuredVideos, newPrograms) => {
   });
 };
 
-module.exports = { sendWelcomeNewsletter };
+const sendNewVideoNotification = async (emailsArray, videoData) => {
+  let htmlTemplate = `
+    <div style="font-family: 'Montserrat', sans-serif; background-color: #131314; color: #ffffff; padding: 30px; text-align: center; border-radius: 10px;">
+      <h1 style="color: #C13535; font-weight: 900;">¡Acabamos de publicar nuevo contenido!</h1>
+      
+      <img src="${videoData.thumbnail || 'https://estudio.radioamerica.com.ve/logo_colors.png'}" style="max-width: 100%; border-radius: 10px; margin: 20px 0; max-height: 300px; object-fit: cover;" alt="${videoData.title}" />
+      
+      <h2 style="color: #ffffff; font-size: 24px; margin-bottom: 10px;">${videoData.title}</h2>
+      <span style="background-color: #F07D00; color: #000; font-size: 12px; font-weight: bold; padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">${videoData.category}</span>
+      
+      <p style="color: #cccccc; margin: 20px 0; font-size: 16px; line-height: 1.5;">${videoData.description || 'Disfruta de este nuevo material exclusivo de Estudio Radio América.'}</p>
+      
+      <a href="https://estudio.radioamerica.com.ve" style="background-color: #C13535; color: white; padding: 15px 30px; text-decoration: none; border-radius: 30px; font-weight: bold; display: inline-block; margin-top: 20px;">Ver o Escuchar Ahora</a>
+      
+      <div style="margin-top: 40px; font-size: 11px; color: #666666; border-top: 1px solid #333; padding-top: 20px;">
+        © ${new Date().getFullYear()} Estudio Radio América. Recibes este correo porque te suscribiste a nuestro boletín.
+      </div>
+    </div>
+  `;
+
+  // Ejecutar el envío (Usamos BCC para que los correos sean privados entre destinatarios)
+  await transporter.sendMail({
+    from: `"Estudio Radio América" <${process.env.SMTP_USER}>`,
+    bcc: emailsArray.join(', '),
+    subject: `Nuevo Episodio: ${videoData.title} 🎙️`,
+    html: htmlTemplate
+  });
+};
+
+module.exports = { sendWelcomeNewsletter, sendNewVideoNotification };
