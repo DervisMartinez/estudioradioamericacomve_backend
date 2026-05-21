@@ -93,17 +93,6 @@ const initDB = async () => {
     try { await pool.query('ALTER TABLE user_profile ADD COLUMN youtube VARCHAR(255) NULL'); } catch(e) {}
     try { await pool.query('ALTER TABLE user_profile ADD COLUMN facebook VARCHAR(255) NULL'); } catch(e) {}
 
-    // 3.5 Crear Tabla de Usuarios Administradores
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        email VARCHAR(255) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL,
-        role VARCHAR(50) DEFAULT 'admin',
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
     // 4. Crear Tabla de Suscriptores para el Newsletter
     await pool.query(`
       CREATE TABLE IF NOT EXISTS subscribers (
