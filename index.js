@@ -7,7 +7,10 @@ const path = require('path');
 const { pool, initDB } = require('./db');
 const { sendWelcomeNewsletter, sendNewVideoNotification } = require('./utils/services/mailer');
 const { processVideoToHLS } = require('./utils/hlsProcessor');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'radio_america_super_secure_key_2026';
 const app = express();
 const port = process.env.PORT || 3005;
 
@@ -67,6 +70,64 @@ app.use((err, req, res, next) => {
 initDB();
 
 // ==========================================
+// RUTAS DE AUTENTICACIÓN (LOGIN / REGISTRO)
+// ==========================================
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    if (users.length === 0) {
+      return res.status(401).json({ error: 'Usuario no encontrado' });
+    }
+    const user = users[0];
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Contraseña incorrecta' });
+    }
+    const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
+  } catch (error) {
+    console.error(" Error en login:", error.message);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+app.post('/api/register', async (req, res) => {
+  const { email, password, role } = req.body;
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    await pool.query('INSERT INTO users (email, password, role) VALUES (?, ?, ?)', [email, hash, role || 'admin']);
+    res.status(201).json({ message: 'Usuario creado exitosamente' });
+  } catch (error) {
+    console.error(" Error en registro:", error.message);
+    if (error.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'El email ya existe' });
+    res.status(500).json({ error: 'Error al registrar el usuario' });
+  }
+});
+
+app.get('/api/users', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT id, email, role, createdAt FROM users ORDER BY createdAt DESC');
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    const [user] = await pool.query('SELECT * FROM users WHERE id = ?', [req.params.id]);
+    if (user.length > 0 && user[0].email === 'estudio@radioamerica.com.ve') {
+       return res.status(403).json({ error: 'No se puede eliminar al superadministrador principal' });
+    }
+    await pool.query('DELETE FROM users WHERE id=?', [req.params.id]);
+    res.json({ message: 'Usuario eliminado' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==========================================
 // RUTA PARA SUBIR ARCHIVOS (FOTOS/VIDEOS)
 // ==========================================
 app.post('/api/upload', (req, res) => {
@@ -92,10 +153,24 @@ app.post('/api/upload', (req, res) => {
       // Si es un video mp4, lo picamos y encriptamos con HLS
       if (req.file.mimetype.startsWith('video/') && fileName.endsWith('.mp4')) {
         const hlsFolderId = fileName.split('.')[0]; // Usamos el timestamp como nombre de carpeta
-        const hlsUrl = processVideoToHLS(finalPath, uploadsDir, hlsFolderId);
         
-        // Si FFmpeg procesó bien el archivo, devolvemos el .m3u8, si no, caemos al .mp4 original
-        return res.json({ url: hlsUrl || finalUrl });
+        // Respondemos inmediatamente al cliente para que no se quede colgado
+        res.json({ url: finalUrl, processing: true });
+        
+        // Iniciamos el procesamiento en background
+        setTimeout(async () => {
+          try {
+            const hlsUrl = await processVideoToHLS(finalPath, uploadsDir, hlsFolderId);
+            if (hlsUrl) {
+              // Buscar en la bd el video que tenga finalUrl y actualizarlo
+              await pool.query('UPDATE videos SET url = ? WHERE url = ?', [hlsUrl, finalUrl]);
+              console.log(`✅ Base de datos actualizada silenciosamente para el video: ${finalUrl} -> ${hlsUrl}`);
+            }
+          } catch (e) {
+            console.error("🔥 Error ejecutando HLS en background:", e);
+          }
+        }, 100);
+        return;
       }
 
       res.json({ url: finalUrl });

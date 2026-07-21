@@ -1,4 +1,5 @@
 const mysql = require('mysql2/promise');
+const bcrypt = require('bcryptjs');
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -112,6 +113,27 @@ const initDB = async () => {
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // 6. Crear Tabla de Usuarios (Autenticación)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'admin',
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Insertar usuario por defecto si no existe
+    const [userRows] = await pool.query('SELECT * FROM users');
+    if (userRows.length === 0) {
+      const defaultHash = await bcrypt.hash('america909.estudio', 10);
+      await pool.query('INSERT INTO users (email, password, role) VALUES (?, ?, ?)', [
+        'estudio@radioamerica.com.ve', defaultHash, 'superadmin'
+      ]);
+      console.log('🔑 Usuario por defecto creado: estudio@radioamerica.com.ve');
+    }
 
     console.log('📦 Tablas de base de datos sincronizadas y listas');
   } catch (err) {
