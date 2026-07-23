@@ -69,6 +69,20 @@ app.use((err, req, res, next) => {
 // Inicializar las tablas de la BD (viene de tu db.js)
 initDB();
 
+// Middleware de Autenticación
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No autorizado. Token faltante.' });
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (e) {
+    return res.status(401).json({ error: 'Token inválido o expirado' });
+  }
+};
+
 // ==========================================
 // RUTAS DE AUTENTICACIÓN (LOGIN / REGISTRO)
 // ==========================================
@@ -92,7 +106,10 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', authMiddleware, async (req, res) => {
+  if (req.user.role === 'producer') {
+    return res.status(403).json({ error: 'Los productores no pueden crear usuarios' });
+  }
   const { email, password, role } = req.body;
   try {
     const hash = await bcrypt.hash(password, 10);
@@ -114,7 +131,10 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-app.delete('/api/users/:id', async (req, res) => {
+app.delete('/api/users/:id', authMiddleware, async (req, res) => {
+  if (req.user.role === 'producer') {
+    return res.status(403).json({ error: 'Los productores no pueden borrar usuarios' });
+  }
   try {
     const [user] = await pool.query('SELECT * FROM users WHERE id = ?', [req.params.id]);
     if (user.length > 0 && user[0].email === 'estudio@radioamerica.com.ve') {
@@ -195,15 +215,29 @@ app.get('/api/sponsors', async (req, res) => {
 });
 
 app.post('/api/sponsors', async (req, res) => {
-  const { id, name, url, programId } = req.body;
+  const { id, name, url, programId, type, assignedEntities } = req.body;
   try {
     await pool.query(
-      `INSERT INTO sponsors (id, name, url, programId) VALUES (?, ?, ?, ?)`,
-      [id, name, url, programId || null]
+      `INSERT INTO sponsors (id, name, url, programId, type, assignedEntities) VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, name, url, programId || null, type || 'audio', assignedEntities ? JSON.stringify(assignedEntities) : null]
     );
     res.status(201).json({ message: 'Cuña creada con éxito' });
   } catch (error) {
     console.error(" Error POST sponsors:", error.message);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.put('/api/sponsors/:id', async (req, res) => {
+  const { name, type, assignedEntities } = req.body;
+  try {
+    await pool.query(
+      `UPDATE sponsors SET name=?, type=?, assignedEntities=? WHERE id=?`,
+      [name, type || 'audio', assignedEntities ? JSON.stringify(assignedEntities) : null, req.params.id]
+    );
+    res.json({ message: 'Cuña actualizada' });
+  } catch (error) {
+    console.error("❌ Error PUT sponsors:", error.message);
     res.status(400).json({ error: error.message });
   }
 });
@@ -366,9 +400,10 @@ app.delete('/api/programs/:id', async (req, res) => {
 // ==========================================
 // RUTAS PARA PERFIL
 // ==========================================
-app.get('/api/profile', async (req, res) => {
+app.get('/api/profile', authMiddleware, async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM user_profile WHERE id = 1');
+    const userId = req.user.id;
+    const [rows] = await pool.query('SELECT * FROM user_profile WHERE userId = ?', [userId]);
     if (rows.length > 0) res.json(rows[0]);
     else res.status(404).json({ error: 'Perfil no encontrado' });
   } catch (error) {
@@ -377,13 +412,22 @@ app.get('/api/profile', async (req, res) => {
   }
 });
 
-app.put('/api/profile', async (req, res) => {
+app.put('/api/profile', authMiddleware, async (req, res) => {
   const { firstName, lastName, avatar, bio, twitter, instagram, youtube, facebook } = req.body;
+  const userId = req.user.id;
   try {
-    await pool.query(
-      `UPDATE user_profile SET firstName=?, lastName=?, avatar=?, bio=?, twitter=?, instagram=?, youtube=?, facebook=? WHERE id=1`,
-      [firstName, lastName, avatar, bio, twitter, instagram, youtube, facebook]
-    );
+    const [existing] = await pool.query('SELECT * FROM user_profile WHERE userId = ?', [userId]);
+    if (existing.length === 0) {
+      await pool.query(
+        `INSERT INTO user_profile (userId, firstName, lastName, avatar, bio, twitter, instagram, youtube, facebook) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [userId, firstName, lastName, avatar, bio, twitter, instagram, youtube, facebook]
+      );
+    } else {
+      await pool.query(
+        `UPDATE user_profile SET firstName=?, lastName=?, avatar=?, bio=?, twitter=?, instagram=?, youtube=?, facebook=? WHERE userId=?`,
+        [firstName, lastName, avatar, bio, twitter, instagram, youtube, facebook, userId]
+      );
+    }
     res.json({ message: 'Perfil actualizado' });
   } catch (error) {
     console.error("❌ Error PUT profile:", error.message);

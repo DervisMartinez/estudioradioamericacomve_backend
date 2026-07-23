@@ -70,7 +70,7 @@ const initDB = async () => {
     // 3. Crear Tabla del Perfil de Usuario Administrador
     await pool.query(`
       CREATE TABLE IF NOT EXISTS user_profile (
-        id INT PRIMARY KEY DEFAULT 1,
+        userId INT PRIMARY KEY,
         firstName VARCHAR(100),
         lastName VARCHAR(100),
         avatar LONGTEXT,
@@ -82,17 +82,19 @@ const initDB = async () => {
       )
     `);
 
-    // Insertar un perfil por defecto si la tabla está vacía
-    const [profileRows] = await pool.query('SELECT * FROM user_profile WHERE id = 1');
+    // Intentar migrar la tabla vieja si existe
+    try { await pool.query('ALTER TABLE user_profile CHANGE id userId INT'); } catch(e) {}
+    try { await pool.query('ALTER TABLE user_profile ADD COLUMN youtube VARCHAR(255) NULL'); } catch(e) {}
+    try { await pool.query('ALTER TABLE user_profile ADD COLUMN facebook VARCHAR(255) NULL'); } catch(e) {}
+
+    // Insertar un perfil por defecto para el superadmin (userId = 1) si la tabla está vacía
+    const [profileRows] = await pool.query('SELECT * FROM user_profile WHERE userId = 1');
     if (profileRows.length === 0) {
       await pool.query(`
-        INSERT INTO user_profile (id, firstName, lastName, avatar, bio, twitter, instagram) 
+        INSERT INTO user_profile (userId, firstName, lastName, avatar, bio, twitter, instagram) 
         VALUES (1, 'Admin', 'Radio', '', 'Administrador del sistema', '@radio', '@radio')
       `);
     }
-
-    try { await pool.query('ALTER TABLE user_profile ADD COLUMN youtube VARCHAR(255) NULL'); } catch(e) {}
-    try { await pool.query('ALTER TABLE user_profile ADD COLUMN facebook VARCHAR(255) NULL'); } catch(e) {}
 
     // 4. Crear Tabla de Suscriptores para el Newsletter
     await pool.query(`
@@ -110,9 +112,14 @@ const initDB = async () => {
         name VARCHAR(255) NOT NULL,
         url TEXT NOT NULL,
         programId VARCHAR(50),
+        type VARCHAR(50) DEFAULT 'audio',
+        assignedEntities LONGTEXT,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    try { await pool.query("ALTER TABLE sponsors ADD COLUMN type VARCHAR(50) DEFAULT 'audio'"); } catch(e) {}
+    try { await pool.query("ALTER TABLE sponsors ADD COLUMN assignedEntities LONGTEXT"); } catch(e) {}
 
     // 6. Crear Tabla de Usuarios (Autenticación)
     await pool.query(`
