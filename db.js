@@ -128,9 +128,12 @@ const initDB = async () => {
         email VARCHAR(255) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
         role VARCHAR(50) DEFAULT 'admin',
+        name VARCHAR(100) NULL,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    try { await pool.query("ALTER TABLE users ADD COLUMN name VARCHAR(100) NULL"); } catch(e) {}
 
     // Insertar usuario por defecto si no existe
     const [userRows] = await pool.query('SELECT * FROM users');

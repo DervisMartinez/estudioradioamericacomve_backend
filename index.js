@@ -98,8 +98,8 @@ app.post('/api/login', async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ error: 'Contraseña incorrecta' });
     }
-    const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
+    const token = jwt.sign({ id: user.id, role: user.role, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user.id, email: user.email, role: user.role, name: user.name } });
   } catch (error) {
     console.error(" Error en login:", error.message);
     res.status(500).json({ error: 'Error del servidor' });
@@ -110,10 +110,10 @@ app.post('/api/register', authMiddleware, async (req, res) => {
   if (req.user.role === 'producer') {
     return res.status(403).json({ error: 'Los productores no pueden crear usuarios' });
   }
-  const { email, password, role } = req.body;
+  const { email, password, role, name } = req.body;
   try {
     const hash = await bcrypt.hash(password, 10);
-    await pool.query('INSERT INTO users (email, password, role) VALUES (?, ?, ?)', [email, hash, role || 'admin']);
+    await pool.query('INSERT INTO users (email, password, role, name) VALUES (?, ?, ?, ?)', [email, hash, role || 'admin', name || '']);
     res.status(201).json({ message: 'Usuario creado exitosamente' });
   } catch (error) {
     console.error(" Error en registro:", error.message);
@@ -124,7 +124,7 @@ app.post('/api/register', authMiddleware, async (req, res) => {
 
 app.get('/api/users', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT id, email, role, createdAt FROM users ORDER BY createdAt DESC');
+    const [rows] = await pool.query('SELECT id, email, role, name, createdAt FROM users ORDER BY createdAt DESC');
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
